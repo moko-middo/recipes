@@ -101,6 +101,29 @@ describe('買い物リストと余り', () => {
     expect(s.some((x) => plan.some((p) => p.id === x.recipe.id))).toBe(false);
   });
 
+  it('提案は、足すと全体の余りが減るものだけ（余りが余りを呼ばない）', () => {
+    const grams = (rows: ReturnType<typeof buildShopping>) =>
+      rows.reduce((t, r) => t + (r.leftover && r.product ? r.leftover * r.product.grams : 0), 0);
+    const start = grams(rows);
+    for (const left of rows.filter((r) => r.leftover)) {
+      for (const sug of suggestFor(left, recipes, plan)) {
+        const after = buildShopping(recipes, [...plan, { id: sug.recipe.id, version: sug.version }]);
+        expect(grams(after), sug.recipe.title).toBeLessThan(start);
+      }
+    }
+  });
+
+  it('提案を何度足しても、いつか余りが無くなるか提案が尽きる', () => {
+    let p2 = [...plan];
+    for (let n = 0; n < 15; n++) {
+      const left = buildShopping(recipes, p2).filter((r) => r.leftover);
+      const sug = left.flatMap((l) => suggestFor(l, recipes, p2))[0];
+      if (!sug) return;
+      p2 = [...p2, { id: sug.recipe.id, version: sug.version }];
+    }
+    throw new Error('提案が終わらない');
+  });
+
   it('提案を足すと余りが減る', () => {
     const plan2 = [...plan, pick('きんぴらごぼう')];
     const carrot = buildShopping(recipes, plan2).find((r) => r.name === 'にんじん')!;

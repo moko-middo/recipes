@@ -345,13 +345,26 @@ export interface Suggestion {
   useText: string;
   /** 余りをほぼ使い切れるなら true */
   usesAll: boolean;
+  /** 足すと新しく余る食材（例：「玉ねぎ 1/2個」）。無ければ空 */
+  newLeftovers: string[];
 }
 
-/** 余りそうな食材を使えるレシピ（作る予定に無いもの）。冷凍OKの副菜を優先 */
+/** 余る量の合計（グラム）。提案を足して本当に減るかを比べるのに使う */
+function leftoverGrams(rows: ShoppingRow[]): number {
+  return rows.reduce((s, r) => s + (r.leftover && r.product ? r.leftover * r.product.grams : 0), 0);
+}
+
+/**
+ * 余りそうな食材を使えるレシピ（作る予定に無いもの）。
+ * 足すと別の食材が余って「余りが余りを呼ぶ」ことがないよう、
+ * 足したあとに全体の余りが減るものだけを出す。新しい余りを生まないもの、冷凍OKの副菜を優先。
+ */
 export function suggestFor(row: ShoppingRow, recipes: Recipe[], plan: PlanItem[], max = 3): Suggestion[] {
   const p = row.product;
   if (!p || !row.leftover) return [];
-  const L = row.leftover;
+  const before = buildShopping(recipes, plan);
+  const beforeGrams = leftoverGrams(before);
+  const beforeLeft = new Map(before.filter((r) => r.leftover).map((r) => [r.name, r.leftover!]));
   const out: (Suggestion & { score: number })[] = [];
   for (const r of recipes) {
     if (plan.some((x) => x.id === r.id)) continue;
@@ -366,14 +379,20 @@ export function suggestFor(row: ShoppingRow, recipes: Recipe[], plan: PlanItem[]
         if (u) used += u;
       }
       if (!used) continue;
-      // 余りの範囲で多く使えるほど良い。余りより多く使うなら少し下げる
-      let score = used <= L * 1.15 ? used / L : (L / used) * 0.7;
-      if (r.category === '副菜' && r.freezable) score += 0.15;
+      const after = buildShopping(recipes, [...plan, { id: r.id, version }]);
+      const reduced = beforeGrams - leftoverGrams(after);
+      if (reduced <= 0) continue; // 全体の余りが減らないなら出さない
+      const newLeftovers = after
+        .filter((x) => x.leftover && x.product && x.leftover > (beforeLeft.get(x.name) ?? 0) + 1e-6)
+        .map((x) => `${x.name} ${x.leftoverText}`);
+      const thisAfter = after.find((x) => x.name === row.name);
+      let score = reduced / 100 - newLeftovers.length * 2;
+      if (r.category === '副菜' && r.freezable) score += 0.5;
       if (!best || score > best.score) {
-        best = { recipe: r, version, useText: formatUnits(p, used), usesAll: used >= L * 0.85 && used <= L * 1.15, score };
+        best = { recipe: r, version, useText: formatUnits(p, used), usesAll: !thisAfter?.leftover, newLeftovers, score };
       }
     }
-    if (best && best.score >= 0.3) out.push(best);
+    if (best) out.push(best);
   }
   return out.sort((a, b) => b.score - a.score).slice(0, max).map(({ score: _s, ...s }) => s);
 }

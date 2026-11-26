@@ -190,11 +190,12 @@ function LeftoverCard({
                 {s.useText}使う{s.usesAll && <b>・使い切り</b>}
                 {s.recipe.freezable && s.recipe.category === '副菜' && <span className="badge freeze">冷凍OK</span>}
               </span>
+              {s.newLeftovers.length > 0 && <span className="suggest-warn">代わりに{s.newLeftovers.join('、')}が余ります</span>}
             </button>
           ))}
         </div>
       ) : (
-        <p className="muted small">この食材を使うほかのレシピは見つかりませんでした。</p>
+        <p className="muted small">足しても全体の余りが減るレシピはありませんでした。ほかの料理に使うか、冷凍しておきましょう。</p>
       )}
     </li>
   );

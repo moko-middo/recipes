@@ -1436,3 +1436,9 @@ pre {
   justify-content: flex-end;
   margin-top: 20px;
 }
+
+.suggest-warn {
+  grid-column: 2;
+  font-size: 12px;
+  color: #9a5b00;
+}
