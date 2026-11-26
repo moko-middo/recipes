@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { back } from '../router.ts';
-import type { Recipe } from '../lib/types.ts';
+import { NUTRIENTS, STALE_NUTRITION, type Recipe } from '../lib/types.ts';
+import { formatNutrient } from '../lib/markdown.ts';
 
 export function TopBar({ title, backTo, right }: { title: ReactNode; backTo?: string; right?: ReactNode }) {
   return (
@@ -60,6 +61,29 @@ export function IngredientTable({ items, large }: { items: Recipe['ingredients']
           </ul>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** 1人分の栄養素の表 */
+export function NutritionPanel({ r }: { r: Pick<Recipe, 'nutrition' | 'nutritionNote' | 'nutritionStale'> }) {
+  if (!r.nutrition) return <p className="muted small">まだ栄養素が入っていません（編集画面で入力できます）。</p>;
+  const n = r.nutrition;
+  return (
+    <div className="nutrition">
+      {r.nutritionStale && <p className="stale">※ {STALE_NUTRITION}</p>}
+      <dl>
+        {NUTRIENTS.map(([key, label, unit]) => (
+          <div key={key} className={`nut nut-${key}`}>
+            <dt>{label}</dt>
+            <dd>
+              {formatNutrient(key, n[key])}
+              <small>{unit}</small>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {r.nutritionNote && <p className="muted small nut-note">{r.nutritionNote}</p>}
     </div>
   );
 }

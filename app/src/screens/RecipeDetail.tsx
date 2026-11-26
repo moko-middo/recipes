@@ -5,7 +5,7 @@ import { contentOf } from '../lib/types.ts';
 import { photoUrl, saveRecipe } from '../lib/store.ts';
 import { resizeImage, squareThumb } from '../lib/image.ts';
 import { saveErrorMessage } from '../lib/errors.ts';
-import { CategoryBadge, IngredientTable, TopBar } from '../components/ui.tsx';
+import { CategoryBadge, IngredientTable, NutritionPanel, TopBar } from '../components/ui.tsx';
 
 export function RecipeDetail({ id }: { id: string }) {
   const { recipes, canEdit, replace, toast } = useApp();
@@ -93,6 +93,11 @@ export function RecipeDetail({ id }: { id: string }) {
       <section>
         <h2>材料</h2>
         <IngredientTable items={r.ingredients} />
+      </section>
+
+      <section>
+        <h2>栄養（1人分）</h2>
+        <NutritionPanel r={r} />
       </section>
 
       {r.sections.map((s, k) => (

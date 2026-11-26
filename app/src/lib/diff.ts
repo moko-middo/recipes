@@ -1,4 +1,5 @@
-import type { RecipeContent } from './types.ts';
+import { NUTRIENTS, type RecipeContent } from './types.ts';
+import { formatNutrient } from './markdown.ts';
 
 export interface Change {
   label: string;
@@ -26,6 +27,14 @@ export function diffContent(a: RecipeContent, b: RecipeContent): Change[] {
   }
   if (a.photos.join() !== b.photos.join()) {
     out.push({ label: '写真', before: `${a.photos.length}枚`, after: `${b.photos.length}枚` });
+  }
+  for (const [key, label, unit] of NUTRIENTS) {
+    const x = a.nutrition?.[key];
+    const y = b.nutrition?.[key];
+    if (x !== y) {
+      const f = (v: number | undefined) => (v === undefined ? '（なし）' : formatNutrient(key, v) + unit);
+      out.push({ label: `${label}（1人分）`, before: f(x), after: f(y) });
+    }
   }
   const am = new Map(a.ingredients.map((i) => [key(i.group, i.name), i.amount]));
   const bm = new Map(b.ingredients.map((i) => [key(i.group, i.name), i.amount]));

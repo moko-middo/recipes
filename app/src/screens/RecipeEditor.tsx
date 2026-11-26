@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context.tsx';
 import { back, go } from '../router.ts';
-import { CATEGORIES, contentOf, type Category, type Ingredient, type RecipeContent } from '../lib/types.ts';
+import { CATEGORIES, NUTRIENTS, contentOf, servingsCount, STALE_NUTRITION, type Category, type Ingredient, type NutrientKey, type Nutrition, type RecipeContent } from '../lib/types.ts';
 import { deleteRecipe, saveRecipe } from '../lib/store.ts';
 import { saveErrorMessage } from '../lib/errors.ts';
 import { diffContent } from '../lib/diff.ts';
+import { withNutritionStatus } from '../lib/nutrition.ts';
 import { TopBar } from '../components/ui.tsx';
 import { NotFound } from './RecipeDetail.tsx';
 
@@ -22,7 +23,24 @@ export function blankRecipe(): RecipeContent {
     memo: '',
     source: '',
     photos: [],
+    nutrition: null,
+    nutritionNote: '',
+    nutritionStale: false,
   };
+}
+
+function nutritionText(n: Nutrition | null): Record<NutrientKey, string> {
+  return Object.fromEntries(NUTRIENTS.map(([k]) => [k, n ? String(n[k]) : ''])) as Record<NutrientKey, string>;
+}
+
+function parseNutrition(t: Record<NutrientKey, string>): Nutrition | null {
+  if (NUTRIENTS.every(([k]) => t[k].trim() === '')) return null;
+  return Object.fromEntries(
+    NUTRIENTS.map(([k]) => {
+      const v = parseFloat(t[k].normalize('NFKC'));
+      return [k, Number.isFinite(v) ? v : 0];
+    }),
+  ) as Nutrition;
 }
 
 /** 貼り付け取り込みからエディタへ下書きを渡す */
@@ -50,6 +68,7 @@ export function RecipeEditor({ id }: { id?: string }) {
   // 手順はテキストエリアで「1行1手順」で編集する
   const [stepTexts, setStepTexts] = useState(() => draft.sections.map((s) => s.steps.join('\n')));
   const [note, setNote] = useState('');
+  const [nutText, setNutText] = useState(() => nutritionText(draft.nutrition));
   const [saving, setSaving] = useState(false);
 
   const result: RecipeContent = useMemo(
@@ -69,11 +88,15 @@ export function RecipeEditor({ id }: { id?: string }) {
         }))
         .filter((s) => s.steps.length || s.title),
       memo: draft.memo.trim(),
+      nutrition: parseNutrition(nutText),
+      nutritionNote: draft.nutritionNote.trim(),
       source: draft.source.trim(),
     }),
-    [draft, stepTexts],
+    [draft, stepTexts, nutText],
   );
-  const changes = existing ? diffContent(contentOf(existing), result) : [];
+  const final = withNutritionStatus(existing && contentOf(existing), result);
+  const changes = existing ? diffContent(contentOf(existing), final) : [];
+  const willBeStale = !!existing && final.nutritionStale && !existing.nutritionStale;
 
   if (id && !existing) return <NotFound />;
 
@@ -99,7 +122,7 @@ export function RecipeEditor({ id }: { id?: string }) {
       const message = existing
         ? `「${result.title}」を編集${note.trim() ? `：${note.trim()}` : ''}`
         : `「${result.title}」を追加${note.trim() ? `：${note.trim()}` : ''}`;
-      const saved = await saveRecipe(recipes, existing ?? null, result, message);
+      const saved = await saveRecipe(recipes, existing ?? null, final, message);
       replace(existing?.id ?? null, saved);
       toast(existing ? '保存しました（前の内容は履歴に残っています）' : '追加しました');
       if (existing && existing.id === saved.id) back(`r/${saved.id}`);
@@ -136,7 +159,16 @@ export function RecipeEditor({ id }: { id?: string }) {
         </label>
         <label className="field">
           <span>何人分</span>
-          <input value={draft.servings} onChange={(e) => set('servings', e.target.value)} />
+          <div className="with-unit">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={servingsCount(draft.servings)}
+              onChange={(e) => set('servings', `${Math.max(1, parseInt(e.target.value, 10) || 1)}人分`)}
+            />
+            <span>人分</span>
+          </div>
         </label>
       </div>
 
@@ -225,6 +257,31 @@ export function RecipeEditor({ id }: { id?: string }) {
         ＋ 手順のまとまりを追加
       </button>
 
+      <h2>栄養（1人分）</h2>
+      <p className="muted small">材料から見積もった目安です。市販品の表示など、正しい値が分かれば書き換えてください。</p>
+      <div className="nut-edit">
+        {NUTRIENTS.map(([key, label, unit]) => (
+          <label key={key} className="field">
+            <span>{label}</span>
+            <div className="with-unit">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min={0}
+                value={nutText[key]}
+                onChange={(e) => setNutText({ ...nutText, [key]: e.target.value })}
+              />
+              <span>{unit}</span>
+            </div>
+          </label>
+        ))}
+      </div>
+      <label className="field">
+        <span>栄養の注意書き</span>
+        <input value={draft.nutritionNote} onChange={(e) => set('nutritionNote', e.target.value)} placeholder="例：ご飯は含みません" />
+      </label>
+
       <label className="field">
         <span>メモ・コツ</span>
         <textarea rows={3} value={draft.memo} onChange={(e) => set('memo', e.target.value)} placeholder="子どもは薄味が好き、など" />
@@ -250,6 +307,7 @@ export function RecipeEditor({ id }: { id?: string }) {
               </li>
             ))}
           </ul>
+          {willBeStale && <p className="stale small">栄養素は計算し直していないので、「{STALE_NUTRITION}」と表示されます。</p>}
           <label className="field">
             <span>変更メモ（任意）</span>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="例：砂糖を減らしたらちょうどよかった" />

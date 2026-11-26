@@ -1,4 +1,4 @@
-import { CATEGORIES, type Category, type Ingredient, type RecipeContent, type StepSection } from './types.ts';
+import { CATEGORIES, NUTRIENTS, STALE_NUTRITION, type Category, type Ingredient, type Nutrition, type RecipeContent, type StepSection } from './types.ts';
 
 const CATEGORY_ALIASES: Record<string, Category> = {
   主菜: '主菜',
@@ -82,7 +82,12 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
   const memoLines: string[] = [];
   const sources: string[] = [];
 
-  type Mode = 'none' | 'ingredients' | 'steps' | 'memo';
+  let nutritionHead: string[] = [];
+  let nutrition: Nutrition | null = null;
+  const nutritionNotes: string[] = [];
+  let nutritionStale = false;
+
+  type Mode = 'none' | 'ingredients' | 'steps' | 'memo' | 'nutrition';
   let mode: Mode = 'none';
   let parentTitle = '';
   let current: StepSection | null = null;
@@ -116,6 +121,8 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
       if (sv && !servings) servings = sv[1].trim();
       if (/^材料/.test(h)) {
         mode = 'ingredients';
+      } else if (/^栄養/.test(h)) {
+        mode = 'nutrition';
       } else if (/^(メモ|ポイント|コツ|備考)/.test(h)) {
         mode = 'memo';
       } else {
@@ -148,6 +155,29 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
       const s = line.replace(/^>\s*/, '').replace(/^(参考|出典)\s*[:：]\s*/, '').trim();
       // 「https://www.  kurashiru.  com/...」のように紛れ込んだ空白を詰める
       if (s) sources.push(s.replace(/https?:\/\/.*$/, (u) => u.replace(/\s+/g, '')));
+      continue;
+    }
+
+    if (mode === 'nutrition') {
+      if (line.startsWith('|')) {
+        const c = cells(line);
+        if (c.every((x) => /^:?-+:?$/.test(x) || x === '')) continue;
+        if (nutritionHead.length === 0) {
+          nutritionHead = c;
+        } else {
+          const n = {} as Nutrition;
+          for (const [key, label] of NUTRIENTS) {
+            const k = nutritionHead.findIndex((h) => h.includes(label));
+            const v = k >= 0 ? parseFloat((c[k] ?? '').normalize('NFKC')) : NaN;
+            n[key] = Number.isFinite(v) ? v : 0;
+          }
+          nutrition = n;
+        }
+      } else {
+        const t = line.replace(/^※\s*/, '');
+        if (t.includes(STALE_NUTRITION)) nutritionStale = true;
+        else nutritionNotes.push(t);
+      }
       continue;
     }
 
@@ -209,6 +239,9 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
     memo: memoLines.join('\n'),
     source: sources.join('\n'),
     photos,
+    nutrition,
+    nutritionNote: nutritionNotes.join('\n'),
+    nutritionStale: nutrition ? nutritionStale : false,
   };
 }
 
@@ -237,6 +270,15 @@ export function toMarkdown(r: RecipeContent): string {
     out.push('', `## ${s.title || '手順'}`, '');
     s.steps.forEach((st, n) => out.push(`${n + 1}. ${st}`));
   }
+  if (r.nutrition) {
+    const n = r.nutrition;
+    out.push('', '## 栄養（1人分）', '');
+    out.push('| ' + NUTRIENTS.map(([, label]) => label).join(' | ') + ' |');
+    out.push('|' + NUTRIENTS.map(() => '---').join('|') + '|');
+    out.push('| ' + NUTRIENTS.map(([key, , unit]) => `${formatNutrient(key, n[key])}${unit}`).join(' | ') + ' |');
+    if (r.nutritionStale) out.push('', `※ ${STALE_NUTRITION}`);
+    if (r.nutritionNote) out.push('', ...r.nutritionNote.split('\n'));
+  }
   if (r.memo) out.push('', '## メモ', '', ...r.memo.split('\n'));
   if (r.source) out.push('', ...r.source.split('\n').map((s) => `> 参考: ${s}`));
   if (r.photos.length) out.push('', ...r.photos.map((p) => `![](/${encodeURI(p)})`));
@@ -256,4 +298,9 @@ export function pathFor(r: RecipeContent): string {
 export function parseRecipeFile(path: string, md: string): RecipeContent {
   const freezable = path.includes('/冷凍OK/') ? true : path.includes('/冷凍NG/') ? false : null;
   return parseRecipeMarkdown(md, { freezable });
+}
+
+/** カロリーは整数、塩分などは小数1桁で表示する */
+export function formatNutrient(key: string, v: number): string {
+  return key === 'kcal' ? String(Math.round(v)) : v.toFixed(1);
 }
