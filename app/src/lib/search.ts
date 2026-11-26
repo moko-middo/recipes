@@ -48,7 +48,7 @@ export function expandTerm(term: string): string[] {
 }
 
 export function haystack(r: Recipe): string {
-  return normalize([r.title, r.subCategory, r.memo, ...r.ingredients.map((i) => i.name)].join(' '));
+  return normalize([r.title, r.subCategory, r.memo, ...r.ingredients.map((i) => i.name), ...(r.proper?.ingredients ?? []).map((i) => i.name)].join(' '));
 }
 
 /** 空白区切りの全部の言葉を含むレシピを返す（言い換えも考慮） */

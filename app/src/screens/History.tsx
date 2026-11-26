@@ -43,7 +43,7 @@ export function HistoryScreen({ id }: { id: string }) {
               {changes.length > 0 && (
                 <ul className="changes">
                   {changes.map((c, k) =>
-                    c.label === '手順' ? (
+                    c.label.endsWith('手順') ? (
                       <li key={k}>
                         <b>手順</b>
                         <details>

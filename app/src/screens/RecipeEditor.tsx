@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context.tsx';
 import { back, go } from '../router.ts';
-import { CATEGORIES, NUTRIENTS, contentOf, servingsCount, STALE_NUTRITION, type Category, type Ingredient, type NutrientKey, type Nutrition, type RecipeContent } from '../lib/types.ts';
+import { CATEGORIES, NUTRIENTS, contentOf, servingsCount, STALE_NUTRITION, type Category, type NutrientKey, type Nutrition, type RecipeContent } from '../lib/types.ts';
 import { deleteRecipe, saveRecipe } from '../lib/store.ts';
 import { saveErrorMessage } from '../lib/errors.ts';
 import { diffContent } from '../lib/diff.ts';
 import { withNutritionStatus } from '../lib/nutrition.ts';
 import { TopBar } from '../components/ui.tsx';
+import { fromEditVersion, toEditVersion, VersionEditor, type EditVersion } from '../components/VersionEditor.tsx';
 import { NotFound } from './RecipeDetail.tsx';
 
 const DRAFT_KEY = 'recipe-import-draft';
@@ -26,6 +27,8 @@ export function blankRecipe(): RecipeContent {
     nutrition: null,
     nutritionNote: '',
     nutritionStale: false,
+    time: null,
+    proper: null,
   };
 }
 
@@ -65,35 +68,30 @@ export function RecipeEditor({ id }: { id?: string }) {
   const [draft, setDraft] = useState<RecipeContent>(() =>
     existing ? contentOf(existing) : (fromImport && takeImportDraft()) || blankRecipe(),
   );
-  // 手順はテキストエリアで「1行1手順」で編集する
-  const [stepTexts, setStepTexts] = useState(() => draft.sections.map((s) => s.steps.join('\n')));
+  const [easy, setEasy] = useState<EditVersion>(() => toEditVersion(draft.ingredients, draft.sections, draft.time));
+  const [proper, setProper] = useState<EditVersion | null>(() =>
+    draft.proper ? toEditVersion(draft.proper.ingredients, draft.proper.sections, draft.proper.time) : null,
+  );
+  const [tab, setTab] = useState<'easy' | 'proper'>('easy');
   const [note, setNote] = useState('');
   const [nutText, setNutText] = useState(() => nutritionText(draft.nutrition));
   const [saving, setSaving] = useState(false);
 
-  const result: RecipeContent = useMemo(
-    () => ({
+  const result: RecipeContent = useMemo(() => {
+    const e = fromEditVersion(easy);
+    return {
       ...draft,
       title: draft.title.trim(),
-      ingredients: draft.ingredients
-        .map((i) => ({ group: i.group.trim().replace(/^[（(]|[）)]$/g, ''), name: i.name.trim(), amount: i.amount.trim() }))
-        .filter((i) => i.name),
-      sections: draft.sections
-        .map((s, k) => ({
-          title: s.title.trim(),
-          steps: (stepTexts[k] ?? '')
-            .split('\n')
-            .map((l) => l.replace(/^\s*\d+[.)．）]\s*/, '').trim())
-            .filter(Boolean),
-        }))
-        .filter((s) => s.steps.length || s.title),
+      ingredients: e.ingredients,
+      sections: e.sections,
+      time: e.time,
+      proper: proper ? fromEditVersion(proper) : null,
       memo: draft.memo.trim(),
       nutrition: parseNutrition(nutText),
       nutritionNote: draft.nutritionNote.trim(),
       source: draft.source.trim(),
-    }),
-    [draft, stepTexts, nutText],
-  );
+    };
+  }, [draft, easy, proper, nutText]);
   const final = withNutritionStatus(existing && contentOf(existing), result);
   const changes = existing ? diffContent(contentOf(existing), final) : [];
   const willBeStale = !!existing && final.nutritionStale && !existing.nutritionStale;
@@ -101,18 +99,6 @@ export function RecipeEditor({ id }: { id?: string }) {
   if (id && !existing) return <NotFound />;
 
   const set = <K extends keyof RecipeContent>(k: K, v: RecipeContent[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const setIng = (n: number, patch: Partial<Ingredient>) =>
-    set(
-      'ingredients',
-      draft.ingredients.map((i, k) => (k === n ? { ...i, ...patch } : i)),
-    );
-  const moveIng = (n: number, dir: -1 | 1) => {
-    const list = [...draft.ingredients];
-    const m = n + dir;
-    if (m < 0 || m >= list.length) return;
-    [list[n], list[m]] = [list[m], list[n]];
-    set('ingredients', list);
-  };
 
   const save = async () => {
     if (!result.title) return toast('料理名を入れてください');
@@ -187,75 +173,37 @@ export function RecipeEditor({ id }: { id?: string }) {
         </div>
       </div>
 
-      <h2>材料</h2>
-      <p className="muted small">まとまり欄に A や B、「たれ」などを入れると (A) のようにまとめて表示されます。</p>
-      <div className="ing-edit">
-        <div className="ing-row ing-head" aria-hidden="true">
-          <span>まとまり</span>
-          <span>材料</span>
-          <span>分量</span>
-          <span />
-        </div>
-        {draft.ingredients.map((i, n) => (
-          <div key={n} className="ing-row">
-            <input className="g" value={i.group} aria-label="まとまり" onChange={(e) => setIng(n, { group: e.target.value })} />
-            <input className="n" value={i.name} aria-label="材料" onChange={(e) => setIng(n, { name: e.target.value })} />
-            <input className="a" value={i.amount} aria-label="分量" onChange={(e) => setIng(n, { amount: e.target.value })} />
-            <div className="row-btns">
-              <button aria-label="上へ" onClick={() => moveIng(n, -1)}>
-                ↑
-              </button>
-              <button aria-label="下へ" onClick={() => moveIng(n, 1)}>
-                ↓
-              </button>
-              <button aria-label="削除" onClick={() => set('ingredients', draft.ingredients.filter((_, k) => k !== n))}>
-                ×
-              </button>
-            </div>
-          </div>
-        ))}
-        <button className="btn" onClick={() => set('ingredients', [...draft.ingredients, { group: '', name: '', amount: '' }])}>
-          ＋ 材料を追加
+      <div className="version-tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'easy'} className={tab === 'easy' ? 'on' : ''} onClick={() => setTab('easy')}>
+          手抜き版
+        </button>
+        <button role="tab" aria-selected={tab === 'proper'} className={tab === 'proper' ? 'on' : ''} onClick={() => setTab('proper')}>
+          ちゃんと版{!proper && '（なし）'}
         </button>
       </div>
 
-      <h2>手順</h2>
-      <p className="muted small">1行に1つの手順を書きます。「仕込み」「帰宅後」のように分けたいときは手順のまとまりを追加します。</p>
-      {draft.sections.map((s, k) => (
-        <div key={k} className="section-edit">
-          <input
-            value={s.title}
-            placeholder="まとまりの名前（ふつうの手順なら空のまま）"
-            onChange={(e) => set('sections', draft.sections.map((x, j) => (j === k ? { ...x, title: e.target.value } : x)))}
-          />
-          <textarea
-            rows={Math.max(4, (stepTexts[k] ?? '').split('\n').length + 1)}
-            value={stepTexts[k] ?? ''}
-            placeholder={'ごぼうはささがきにする\n人参は細切りにする'}
-            onChange={(e) => setStepTexts(stepTexts.map((t, j) => (j === k ? e.target.value : t)))}
-          />
-          {draft.sections.length > 1 && (
+      {tab === 'easy' && <VersionEditor value={easy} onChange={setEasy} />}
+      {tab === 'proper' &&
+        (proper ? (
+          <>
+            <VersionEditor value={proper} onChange={setProper} />
             <button
-              className="btn small"
+              className="btn small danger remove-version"
               onClick={() => {
-                set('sections', draft.sections.filter((_, j) => j !== k));
-                setStepTexts(stepTexts.filter((_, j) => j !== k));
+                if (confirm('ちゃんと版を消しますか？（保存するまでは元に戻せます）')) setProper(null);
               }}
             >
-              このまとまりを削除
+              ちゃんと版を消す
             </button>
-          )}
-        </div>
-      ))}
-      <button
-        className="btn"
-        onClick={() => {
-          set('sections', [...draft.sections, { title: '', steps: [] }]);
-          setStepTexts([...stepTexts, '']);
-        }}
-      >
-        ＋ 手順のまとまりを追加
-      </button>
+          </>
+        ) : (
+          <div className="empty">
+            <p className="muted">ちゃんと版はまだありません。</p>
+            <button className="btn primary" onClick={() => setProper({ ...structuredClone(easy), time: '' })}>
+              手抜き版をコピーして作る
+            </button>
+          </div>
+        ))}
 
       <h2>栄養（1人分）</h2>
       <p className="muted small">材料から見積もった目安です。市販品の表示など、正しい値が分かれば書き換えてください。</p>
@@ -303,7 +251,7 @@ export function RecipeEditor({ id }: { id?: string }) {
           <ul className="changes">
             {changes.map((c, n) => (
               <li key={n}>
-                <b>{c.label}</b> {c.label === '手順' ? '（手順を変更）' : `${c.before || '（空）'} → ${c.after || '（空）'}`}
+                <b>{c.label}</b> {c.label.endsWith('手順') ? '（手順を変更）' : `${c.before || '（空）'} → ${c.after || '（空）'}`}
               </li>
             ))}
           </ul>

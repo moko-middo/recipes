@@ -22,6 +22,19 @@ describe('栄養', () => {
     }
   });
 
+  it('全部のレシピに手抜き版とちゃんと版があり、両方に時間が入っている', () => {
+    for (const f of files) {
+      const r = parseRecipeFile(f.path, f.md);
+      expect(r.time, r.title).toBeGreaterThan(0);
+      expect(r.proper, r.title).not.toBeNull();
+      expect(r.proper!.time, r.title).toBeGreaterThan(0);
+      expect(r.proper!.ingredients.length, r.title).toBeGreaterThan(0);
+      expect(r.proper!.sections.flatMap((s) => s.steps).length, r.title).toBeGreaterThan(0);
+      // ちゃんと版の材料が手抜き版の材料に紛れ込んでいない
+      expect(r.ingredients.length, r.title).toBeLessThanOrEqual(f.md.split('## ちゃんと版')[0].split('\n').filter((l) => l.startsWith('|')).length * 2);
+    }
+  });
+
   it('値と注意書きを読める', () => {
     const r = find('キーマカレー');
     expect(r.nutrition).toEqual({ kcal: 324, protein: 15.7, fat: 22, carbs: 19.4, sugar: 16.4, fiber: 3, salt: 2.3 });

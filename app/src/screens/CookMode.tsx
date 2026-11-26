@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../context.tsx';
 import { back } from '../router.ts';
 import { NotFound } from './RecipeDetail.tsx';
+import { useVersion, versionOf, VersionToggle } from '../components/VersionToggle.tsx';
 
 /** 作るとき用の大きな表示。画面が消えないようにする。Nest Hub にキャストして見る想定 */
 export function CookMode({ id }: { id: string }) {
@@ -9,6 +10,12 @@ export function CookMode({ id }: { id: string }) {
   const r = recipes.find((x) => x.id === id);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [version, setVersionRaw] = useVersion();
+  const setVersion = (x: typeof version) => {
+    setVersionRaw(x);
+    setDone(new Set());
+    setChecked(new Set());
+  };
 
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null;
@@ -29,6 +36,7 @@ export function CookMode({ id }: { id: string }) {
   }, []);
 
   if (!r) return <NotFound />;
+  const v = versionOf(r, version);
 
   const toggle = (key: string) =>
     setDone((d) => {
@@ -45,13 +53,14 @@ export function CookMode({ id }: { id: string }) {
           ‹ 戻る
         </button>
         <h1>{r.title}</h1>
+        <VersionToggle r={r} value={version} onChange={setVersion} compact />
         <span className="cook-servings">{r.servings}</span>
       </header>
       <div className="cook-body">
         <aside className="cook-ings">
           <h2>材料</h2>
           <ul className="cook-checklist">
-            {r.ingredients.map((i, n) => (
+            {v.ingredients.map((i, n) => (
               <li key={n} className={checked.has(n) ? 'checked' : ''}>
                 <label>
                   <input
@@ -74,9 +83,9 @@ export function CookMode({ id }: { id: string }) {
           </ul>
         </aside>
         <main className="cook-steps">
-          {r.sections.map((s, k) => (
+          {v.sections.map((s, k) => (
             <section key={k}>
-              {s.title && <h2>{s.title}</h2>}
+              {(s.title || v.sections.length > 1) && <h2>{s.title || "作り方"}</h2>}
               <ol>
                 {s.steps.map((st, n) => {
                   const key = `${k}-${n}`;

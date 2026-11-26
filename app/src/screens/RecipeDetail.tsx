@@ -6,6 +6,7 @@ import { photoUrl, saveRecipe } from '../lib/store.ts';
 import { resizeImage, squareThumb } from '../lib/image.ts';
 import { saveErrorMessage } from '../lib/errors.ts';
 import { CategoryBadge, IngredientTable, NutritionPanel, TopBar } from '../components/ui.tsx';
+import { useVersion, versionOf, VersionToggle } from '../components/VersionToggle.tsx';
 
 export function RecipeDetail({ id }: { id: string }) {
   const { recipes, canEdit, replace, toast } = useApp();
@@ -13,8 +14,10 @@ export function RecipeDetail({ id }: { id: string }) {
   const [viewing, setViewing] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [version, setVersion] = useVersion();
 
   if (!r) return <NotFound />;
+  const v = versionOf(r, version);
 
   const addPhotos = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -84,6 +87,8 @@ export function RecipeDetail({ id }: { id: string }) {
         <span className="servings">{r.servings}</span>
       </div>
 
+      <VersionToggle r={r} value={version} onChange={setVersion} />
+
       <div className="actions">
         <button className="btn primary big" onClick={() => go(`r/${r.id}/cook`)}>
           🍳 作る（調理モード）
@@ -92,7 +97,7 @@ export function RecipeDetail({ id }: { id: string }) {
 
       <section>
         <h2>材料</h2>
-        <IngredientTable items={r.ingredients} />
+        <IngredientTable items={v.ingredients} />
       </section>
 
       <section>
@@ -100,7 +105,7 @@ export function RecipeDetail({ id }: { id: string }) {
         <NutritionPanel r={r} />
       </section>
 
-      {r.sections.map((s, k) => (
+      {v.sections.map((s, k) => (
         <section key={k}>
           <h2>{s.title || '手順'}</h2>
           <ol className="steps">

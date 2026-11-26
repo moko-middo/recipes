@@ -1,4 +1,4 @@
-import { NUTRIENTS, type RecipeContent } from './types.ts';
+import { NUTRIENTS, formatMinutes, type Ingredient, type RecipeContent, type StepSection } from './types.ts';
 import { formatNutrient } from './markdown.ts';
 
 export interface Change {
@@ -36,20 +36,34 @@ export function diffContent(a: RecipeContent, b: RecipeContent): Change[] {
       out.push({ label: `${label}（1人分）`, before: f(x), after: f(y) });
     }
   }
-  const am = new Map(a.ingredients.map((i) => [key(i.group, i.name), i.amount]));
-  const bm = new Map(b.ingredients.map((i) => [key(i.group, i.name), i.amount]));
+  const t = (v: number | null | undefined) => (v ? formatMinutes(v) : '（なし）');
+  if (a.time !== b.time) out.push({ label: '時間（手抜き版）', before: t(a.time), after: t(b.time) });
+  diffVersion(out, '', a.ingredients, b.ingredients, a.sections, b.sections);
+  if (!a.proper && b.proper) out.push({ label: 'ちゃんと版', before: '（なし）', after: '追加' });
+  else if (a.proper && !b.proper) out.push({ label: 'ちゃんと版', before: 'あり', after: '（削除）' });
+  else if (a.proper && b.proper) {
+    if (a.proper.time !== b.proper.time) out.push({ label: '時間（ちゃんと版）', before: t(a.proper.time), after: t(b.proper.time) });
+    diffVersion(out, 'ちゃんと版：', a.proper.ingredients, b.proper.ingredients, a.proper.sections, b.proper.sections);
+  }
+  return out;
+}
+
+const stepsText = (sections: StepSection[]) =>
+  sections.map((s) => (s.title ? `【${s.title}】\n` : '') + s.steps.map((x, n) => `${n + 1}. ${x}`).join('\n')).join('\n');
+
+function diffVersion(out: Change[], prefix: string, ai: Ingredient[], bi: Ingredient[], as: StepSection[], bs: StepSection[]) {
+  const am = new Map(ai.map((i) => [key(i.group, i.name), i.amount]));
+  const bm = new Map(bi.map((i) => [key(i.group, i.name), i.amount]));
   const label = (k: string) => {
     const [g, n] = k.split('\u0000');
-    return g ? `(${g})${n}` : n;
+    return prefix + (g ? `(${g})${n}` : n);
   };
   for (const [k, v] of am) {
     if (!bm.has(k)) out.push({ label: label(k), before: v, after: '（削除）' });
     else if (bm.get(k) !== v) out.push({ label: label(k), before: v, after: bm.get(k)! });
   }
   for (const [k, v] of bm) if (!am.has(k)) out.push({ label: label(k), before: '（なし）', after: v });
-  const steps = (r: RecipeContent) => r.sections.map((s) => (s.title ? `【${s.title}】\n` : '') + s.steps.map((x, n) => `${n + 1}. ${x}`).join('\n')).join('\n');
-  const sa = steps(a);
-  const sb = steps(b);
-  if (sa !== sb) out.push({ label: '手順', before: sa, after: sb });
-  return out;
+  const sa = stepsText(as);
+  const sb = stepsText(bs);
+  if (sa !== sb) out.push({ label: `${prefix}手順`, before: sa, after: sb });
 }

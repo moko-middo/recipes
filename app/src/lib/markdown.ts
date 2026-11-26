@@ -1,4 +1,4 @@
-import { CATEGORIES, NUTRIENTS, STALE_NUTRITION, type Category, type Ingredient, type Nutrition, type RecipeContent, type StepSection } from './types.ts';
+import { CATEGORIES, NUTRIENTS, STALE_NUTRITION, formatMinutes, parseMinutes, type Category, type Ingredient, type Nutrition, type RecipeContent, type StepSection } from './types.ts';
 
 const CATEGORY_ALIASES: Record<string, Category> = {
   主菜: '主菜',
@@ -77,8 +77,12 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
 
   let title = '';
   let servings = '';
-  const ingredients: Ingredient[] = [];
-  const sections: StepSection[] = [];
+  const easy = { ingredients: [] as Ingredient[], sections: [] as StepSection[] };
+  const proper = { ingredients: [] as Ingredient[], sections: [] as StepSection[] };
+  let target = easy;
+  let hasProper = false;
+  const ingredients = easy.ingredients;
+  const sections = easy.sections;
   const memoLines: string[] = [];
   const sources: string[] = [];
 
@@ -94,13 +98,13 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
 
   let tableColumns: Ingredient[][] = [];
   const flushTable = () => {
-    for (const col of tableColumns) if (col) ingredients.push(...col);
+    for (const col of tableColumns) if (col) target.ingredients.push(...col);
     tableColumns = [];
   };
 
   const startSection = (t: string) => {
     current = { title: t, steps: [] };
-    sections.push(current);
+    target.sections.push(current);
   };
 
   for (; i < lines.length; i++) {
@@ -116,7 +120,17 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
     }
     const h2 = line.match(/^##\s+(.+)$/);
     if (h2) {
-      const h = h2[1].trim();
+      let h = h2[1].trim();
+      // 「## ちゃんと版：材料」「## ちゃんと版：手順」はちゃんと版のほう
+      const pm = h.match(/^ちゃんと版\s*[：:]?\s*(.*)$/);
+      if (pm) {
+        target = proper;
+        hasProper = true;
+        h = pm[1].trim() || '手順';
+      } else {
+        target = easy;
+      }
+      current = null;
       const sv = h.match(/[（(]([^）)]*人分[^）)]*)[）)]/);
       if (sv && !servings) servings = sv[1].trim();
       if (/^材料/.test(h)) {
@@ -138,7 +152,7 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
       const t = h3[1].trim();
       // 親見出しの直後で手順がまだ無い空のセクションは置き換える
       const cur = current as StepSection | null;
-      if (cur && cur.steps.length === 0 && cur.title === parentTitle) sections.pop();
+      if (cur && cur.steps.length === 0 && cur.title === parentTitle) target.sections.pop();
       startSection(parentTitle ? `${parentTitle}（${t}）` : t);
       continue;
     }
@@ -199,10 +213,10 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
       const m = line.replace(/^[-*・●]\s*/, '').match(/^(.+?)[\s　…:：]+([^\s　]+)$/);
       if (m) {
         const { group, name } = splitGroup(m[1]);
-        ingredients.push({ group, name, amount: m[2] });
+        target.ingredients.push({ group, name, amount: m[2] });
       } else {
         const { group, name } = splitGroup(line.replace(/^[-*・●]\s*/, ''));
-        ingredients.push({ group, name, amount: '' });
+        target.ingredients.push({ group, name, amount: '' });
       }
       continue;
     }
@@ -242,7 +256,30 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
     nutrition,
     nutritionNote: nutritionNotes.join('\n'),
     nutritionStale: nutrition ? nutritionStale : false,
+    time: parseMinutes(front['時間']),
+    proper: hasProper
+      ? {
+          ingredients: proper.ingredients,
+          sections: proper.sections.filter((s) => s.steps.length > 0 || s.title),
+          time: parseMinutes(front['ちゃんと版の時間']),
+        }
+      : null,
   };
+}
+
+function writeVersion(out: string[], prefix: string, ingredients: Ingredient[], sections: StepSection[]) {
+  if (prefix) out.push('');
+  out.push(`## ${prefix}材料`, '', '| 材料 | 分量 | 材料 | 分量 |', '|------|------|------|------|');
+  const half = Math.ceil(ingredients.length / 2);
+  for (let k = 0; k < half; k++) {
+    const a = ingredients[k];
+    const b = ingredients[k + half];
+    out.push(`| ${groupLabel(a.group)}${a.name} | ${a.amount} | ${b ? groupLabel(b.group) + b.name : ''} | ${b ? b.amount : ''} |`);
+  }
+  for (const s of sections) {
+    out.push('', `## ${prefix}${s.title || '手順'}`, '');
+    s.steps.forEach((st, n) => out.push(`${n + 1}. ${st}`));
+  }
 }
 
 function groupLabel(g: string): string {
@@ -257,19 +294,12 @@ export function toMarkdown(r: RecipeContent): string {
   out.push(`何人分: ${r.servings}`);
   if (r.freezable !== null) out.push(`冷凍: ${r.freezable ? 'OK' : 'NG'}`);
   if (r.photos.length) out.push(`写真: ${r.photos.join(', ')}`);
+  if (r.time) out.push(`時間: ${formatMinutes(r.time)}`);
+  if (r.proper?.time) out.push(`ちゃんと版の時間: ${formatMinutes(r.proper.time)}`);
   out.push('---', '', `# ${r.title}`, '');
   if (r.servings) out.push(`**${r.servings}**`, '');
-  out.push('## 材料', '', '| 材料 | 分量 | 材料 | 分量 |', '|------|------|------|------|');
-  const half = Math.ceil(r.ingredients.length / 2);
-  for (let k = 0; k < half; k++) {
-    const a = r.ingredients[k];
-    const b = r.ingredients[k + half];
-    out.push(`| ${groupLabel(a.group)}${a.name} | ${a.amount} | ${b ? groupLabel(b.group) + b.name : ''} | ${b ? b.amount : ''} |`);
-  }
-  for (const s of r.sections) {
-    out.push('', `## ${s.title || '手順'}`, '');
-    s.steps.forEach((st, n) => out.push(`${n + 1}. ${st}`));
-  }
+  writeVersion(out, '', r.ingredients, r.sections);
+  if (r.proper) writeVersion(out, 'ちゃんと版：', r.proper.ingredients, r.proper.sections);
   if (r.nutrition) {
     const n = r.nutrition;
     out.push('', '## 栄養（1人分）', '');

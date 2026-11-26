@@ -30,7 +30,15 @@ export interface StepSection {
   steps: string[];
 }
 
-/** レシピの中身（履歴に残す部分） */
+/** ちゃんと版（材料と手順を丸ごと持つ） */
+export interface ProperVersion {
+  ingredients: Ingredient[];
+  sections: StepSection[];
+  /** 所要時間（分） */
+  time: number | null;
+}
+
+/** レシピの中身（履歴に残す部分）。材料と手順は「手抜き版」 */
 export interface RecipeContent {
   title: string;
   category: Category;
@@ -51,6 +59,10 @@ export interface RecipeContent {
   nutritionNote: string;
   /** 分量を変えたあと栄養素を計算し直していなければ true */
   nutritionStale: boolean;
+  /** 手抜き版の所要時間（分） */
+  time: number | null;
+  /** ちゃんと版（無ければ null） */
+  proper: ProperVersion | null;
 }
 
 export interface Recipe extends RecipeContent {
@@ -84,6 +96,14 @@ export function contentOf(r: RecipeContent): RecipeContent {
     nutrition: r.nutrition ? { ...r.nutrition } : null,
     nutritionNote: r.nutritionNote,
     nutritionStale: r.nutritionStale,
+    time: r.time,
+    proper: r.proper
+      ? {
+          ingredients: r.proper.ingredients.map((i) => ({ ...i })),
+          sections: r.proper.sections.map((x) => ({ title: x.title, steps: [...x.steps] })),
+          time: r.proper.time,
+        }
+      : null,
   };
 }
 
@@ -91,4 +111,25 @@ export function contentOf(r: RecipeContent): RecipeContent {
 export function servingsCount(s: string): number {
   const nums = (s.normalize('NFKC').match(/\d+/g) ?? []).map(Number).filter((n) => n > 0);
   return nums.length ? Math.max(...nums) : 1;
+}
+
+/** 「40分」「1時間30分」→ 分。読めなければ null */
+export function parseMinutes(s: string | undefined): number | null {
+  if (!s) return null;
+  const t = s.normalize('NFKC');
+  const h = t.match(/(\d+(?:\.\d+)?)\s*時間/);
+  const m = t.match(/(\d+)\s*分/);
+  if (!h && !m) {
+    const n = parseInt(t, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  return Math.round((h ? parseFloat(h[1]) * 60 : 0) + (m ? parseInt(m[1], 10) : 0)) || null;
+}
+
+/** 分 → 「40分」「1時間30分」 */
+export function formatMinutes(n: number): string {
+  if (n < 60) return `${n}分`;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return m ? `${h}時間${m}分` : `${h}時間`;
 }

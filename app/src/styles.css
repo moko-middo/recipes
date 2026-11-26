@@ -993,3 +993,113 @@ pre {
   font-size: 14px;
   color: var(--muted);
 }
+
+/* ---------- 手抜き／ちゃんと ---------- */
+.version-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin: 4px 0 10px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+}
+
+.version-toggle button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.version-toggle button.on {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.vt-label {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.version-toggle button.on .vt-label {
+  color: var(--accent);
+}
+
+.vt-time {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.version-toggle.compact {
+  margin: 0;
+  min-width: 260px;
+}
+
+.version-toggle.compact button {
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+}
+
+.version-toggle.compact .vt-label {
+  font-size: 18px;
+}
+
+.version-toggle.compact .vt-time {
+  font-size: 16px;
+}
+
+.time-chip {
+  display: inline-block;
+  margin: 4px 0 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.version-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 24px 0 4px;
+  border-bottom: 2px solid var(--line);
+}
+
+.version-tabs button {
+  padding: 10px;
+  border: none;
+  background: none;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.version-tabs button.on {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.time-field {
+  max-width: 200px;
+}
+
+.remove-version {
+  margin-top: 16px;
+}
+
+.cook-head {
+  flex-wrap: wrap;
+}
