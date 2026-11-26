@@ -59,7 +59,7 @@ export function Settings() {
         ) : (
           <>
             <p className="muted small">
-              見るだけなら鍵は不要です。編集・写真の追加・作る予定を使うには、GitHubで作った鍵を貼り付けます。作り方は app/README.md にあります（招待された人は作り方が少し違います）。
+              見るだけなら鍵は不要です。編集・写真の追加・作る予定を使うには、GitHubで作った鍵を貼り付けます。作り方はリポジトリの README にあります（招待された人は作り方が少し違います）。
             </p>
             <div className="inline-form">
               <input type="password" placeholder="github_pat_…" value={input} onChange={(e) => setInput(e.target.value)} autoComplete="off" />
