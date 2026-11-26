@@ -177,7 +177,7 @@ export function PlanScreen() {
         <button
           className="btn small danger"
           onClick={() => {
-            if (confirm('作る予定を全部消しますか？（相手のスマホからも消えます）')) planOp({ type: 'clearAll' });
+            if (confirm('作る予定を全部消しますか？（一緒に使っている人の画面からも消えます）')) planOp({ type: 'clearAll' });
           }}
         >
           作る予定を全部消す

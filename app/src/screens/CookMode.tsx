@@ -4,7 +4,7 @@ import { back } from '../router.ts';
 import { NotFound } from './RecipeDetail.tsx';
 import { useVersion, versionOf, VersionToggle } from '../components/VersionToggle.tsx';
 
-/** 作るとき用の大きな表示。画面が消えないようにする。Nest Hub にキャストして見る想定 */
+/** 作るとき用の大きな表示。画面が消えないようにする。大きな画面に映して見てもよい */
 export function CookMode({ id }: { id: string }) {
   const { recipes } = useApp();
   const r = recipes.find((x) => x.id === id);

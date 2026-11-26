@@ -234,7 +234,7 @@ export function RecipeEditor({ id }: { id?: string }) {
 
       <label className="field">
         <span>メモ・コツ</span>
-        <textarea rows={3} value={draft.memo} onChange={(e) => set('memo', e.target.value)} placeholder="子どもは薄味が好き、など" />
+        <textarea rows={3} value={draft.memo} onChange={(e) => set('memo', e.target.value)} placeholder="コツや、次に作るときに試したいことなど" />
       </label>
       <label className="field">
         <span>参考（URL・番組名・雑誌名など）</span>

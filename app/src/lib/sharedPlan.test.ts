@@ -5,34 +5,34 @@ const run = (p: SharedPlan, ops: PlanOp[], by: string) => ops.reduce((acc, op, n
 
 describe('共有の作る予定', () => {
   it('足す・外す・切り替える・チェックする', () => {
-    let p = run(EMPTY_PLAN, [{ type: 'add', id: 'a', version: 'easy' }, { type: 'add', id: 'b', version: 'easy' }], 'wife');
-    p = run(p, [{ type: 'version', id: 'a', version: 'proper' }, { type: 'remove', id: 'b' }, { type: 'check', name: '玉ねぎ', on: true }], 'husband');
-    expect(p.items).toEqual([{ id: 'a', version: 'proper', by: 'wife', at: 1000 }]);
-    expect(p.checked).toEqual([{ name: '玉ねぎ', by: 'husband', at: 1002 }]);
-    expect(p.updatedBy).toBe('husband');
+    let p = run(EMPTY_PLAN, [{ type: 'add', id: 'a', version: 'easy' }, { type: 'add', id: 'b', version: 'easy' }], 'alice');
+    p = run(p, [{ type: 'version', id: 'a', version: 'proper' }, { type: 'remove', id: 'b' }, { type: 'check', name: '玉ねぎ', on: true }], 'bob');
+    expect(p.items).toEqual([{ id: 'a', version: 'proper', by: 'alice', at: 1000 }]);
+    expect(p.checked).toEqual([{ name: '玉ねぎ', by: 'bob', at: 1002 }]);
+    expect(p.updatedBy).toBe('bob');
   });
 
   it('同じ操作を2回重ねても結果は同じ（保存のやり直しで重複しない）', () => {
     const op: PlanOp = { type: 'add', id: 'a', version: 'easy' };
-    const once = applyOp(EMPTY_PLAN, op, 'wife', 1);
-    expect(applyOp(once, op, 'wife', 1)).toEqual(once);
+    const once = applyOp(EMPTY_PLAN, op, 'alice', 1);
+    expect(applyOp(once, op, 'alice', 1)).toEqual(once);
   });
 
   it('同時に触っても、両方の変更が残る（最新に重ね直す）', () => {
-    const base = run(EMPTY_PLAN, [{ type: 'add', id: 'a', version: 'easy' }], 'wife');
-    // 妻は b を足し、夫は同じ時に a をちゃんとにした。夫が先に保存 → 妻は夫の保存後の内容に自分の操作を重ね直す
-    const afterHusband = run(base, [{ type: 'version', id: 'a', version: 'proper' }], 'husband');
-    const afterWife = run(afterHusband, [{ type: 'add', id: 'b', version: 'easy' }], 'wife');
-    expect(afterWife.items.map((i) => `${i.id}:${i.version}`)).toEqual(['a:proper', 'b:easy']);
+    const base = run(EMPTY_PLAN, [{ type: 'add', id: 'a', version: 'easy' }], 'alice');
+    // Aさんは b を足し、Bさんは同じ時に a をちゃんとにした。Bさんが先に保存 → Aさんは保存後の内容に自分の操作を重ね直す
+    const afterB = run(base, [{ type: 'version', id: 'a', version: 'proper' }], 'bob');
+    const afterA = run(afterB, [{ type: 'add', id: 'b', version: 'easy' }], 'alice');
+    expect(afterA.items.map((i) => `${i.id}:${i.version}`)).toEqual(['a:proper', 'b:easy']);
   });
 
   it('前の形式（呼び名つき）も読める', () => {
-    const p = parsePlan('{"items":[],"checked":[],"names":{"otto":"夫"},"updatedBy":"otto","updatedAt":1}');
-    expect(p).toEqual({ items: [], checked: [], updatedBy: 'otto', updatedAt: 1 });
+    const p = parsePlan('{"items":[],"checked":[],"names":{"bob":"B"},"updatedBy":"bob","updatedAt":1}');
+    expect(p).toEqual({ items: [], checked: [], updatedBy: 'bob', updatedAt: 1 });
   });
 
   it('保存形式の読み書き。壊れていても空として扱う', () => {
-    const p = run(EMPTY_PLAN, [{ type: 'add', id: 'a', version: 'easy' }], 'wife');
+    const p = run(EMPTY_PLAN, [{ type: 'add', id: 'a', version: 'easy' }], 'alice');
     expect(parsePlan(serializePlan(p))).toEqual(p);
     expect(parsePlan('{壊れた')).toEqual(EMPTY_PLAN);
     expect(parsePlan(null)).toEqual(EMPTY_PLAN);

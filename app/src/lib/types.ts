@@ -1,7 +1,7 @@
 export const CATEGORIES = ['主菜', '主食', '副菜', '汁物', 'おやつ'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-/** 栄養素（1人分）。カロミルの「Myメニュー」と同じ項目 */
+/** 栄養素（1人分）。食事記録アプリでよく使う7項目 */
 export const NUTRIENTS = [
   ['kcal', 'カロリー', 'kcal'],
   ['protein', 'たんぱく質', 'g'],
