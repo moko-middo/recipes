@@ -75,6 +75,14 @@ describe('栄養', () => {
     expect(withNutritionStatus(before, after).nutritionStale).toBe(false);
   });
 
+  it('人数は「## 栄養（1人分）」から読まない', () => {
+    expect(find('オクラと梅干しの和え物').servings).toBe('2人分');
+    for (const f of files) {
+      const front = f.md.match(/何人分: (.+)/)![1];
+      expect(parseRecipeFile(f.path, f.md).servings, f.path).toBe(f.md.match(/\*\*(.+人分)\*\*/)?.[1] ?? f.md.match(/## 材料[（(](.+人分)[）)]/)?.[1] ?? front);
+    }
+  });
+
   it('何人分は数字1つ。幅があれば多いほう', () => {
     expect(servingsCount('2〜3人分')).toBe(3);
     expect(servingsCount('４人分')).toBe(4);

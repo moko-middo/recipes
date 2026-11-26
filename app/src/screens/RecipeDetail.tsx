@@ -7,6 +7,7 @@ import { resizeImage, squareThumb } from '../lib/image.ts';
 import { saveErrorMessage } from '../lib/errors.ts';
 import { CategoryBadge, IngredientTable, NutritionPanel, TopBar } from '../components/ui.tsx';
 import { useVersion, versionOf, VersionToggle } from '../components/VersionToggle.tsx';
+import { PlanBar, usePlanToggle } from '../components/PlanButton.tsx';
 
 export function RecipeDetail({ id }: { id: string }) {
   const { recipes, canEdit, replace, toast } = useApp();
@@ -93,6 +94,7 @@ export function RecipeDetail({ id }: { id: string }) {
         <button className="btn primary big" onClick={() => go(`r/${r.id}/cook`)}>
           🍳 作る（調理モード）
         </button>
+        <PlanToggleButton r={r} version={version} />
       </div>
 
       <section>
@@ -140,6 +142,8 @@ export function RecipeDetail({ id }: { id: string }) {
         </section>
       )}
 
+      <PlanBar />
+
       <div className="detail-foot">
         <button className="btn" onClick={() => go(`r/${r.id}/history`)}>
           🕘 変更の履歴
@@ -183,6 +187,15 @@ export function RecipeDetail({ id }: { id: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+function PlanToggleButton({ r, version }: { r: Parameters<typeof usePlanToggle>[0]; version: ReturnType<typeof useVersion>[0] }) {
+  const { inPlan, toggle } = usePlanToggle(r);
+  return (
+    <button className={`btn plan-toggle ${inPlan ? 'on' : ''}`} onClick={() => toggle(version)}>
+      {inPlan ? '✓ 作る予定に入っています（外す）' : '🛒 作る予定に入れる'}
+    </button>
   );
 }
 

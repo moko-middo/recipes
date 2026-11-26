@@ -5,6 +5,9 @@ import { CATEGORIES, type Category } from '../lib/types.ts';
 import { matches } from '../lib/search.ts';
 import { thumbUrl } from '../lib/store.ts';
 import { CategoryBadge, TopBar } from '../components/ui.tsx';
+import { PlanAddButton, PlanBar } from '../components/PlanButton.tsx';
+import { useVersion } from '../components/VersionToggle.tsx';
+import { formatMinutes } from '../lib/types.ts';
 
 const FILTER_KEY = 'recipe-list-filter';
 
@@ -17,7 +20,8 @@ function loadFilter(): { cat: Category | ''; freeze: boolean } {
 }
 
 export function RecipeList() {
-  const { recipes, canEdit } = useApp();
+  const { recipes, canEdit, plan } = useApp();
+  const [version] = useVersion();
   const [q, setQ] = useState(() => sessionStorage.getItem(FILTER_KEY + '-q') ?? '');
   const [filter, setFilterState] = useState(loadFilter);
   const setFilter = (f: typeof filter) => {
@@ -79,7 +83,7 @@ export function RecipeList() {
       <div className="count muted">{shown.length}品</div>
       <ul className="recipe-list">
         {shown.map((r) => (
-          <li key={r.id}>
+          <li key={r.id} className="recipe-item">
             <a href={`#/r/${r.id}`} className="recipe-card">
               <div className="thumb">{r.photos[0] ? <img src={thumbUrl(r.photos[0])} alt="" loading="lazy" /> : <span>{r.title.slice(0, 1)}</span>}</div>
               <div className="card-body">
@@ -87,16 +91,19 @@ export function RecipeList() {
                 <div className="card-meta">
                   <CategoryBadge r={r} />
                   <span className="muted small">{r.servings}</span>
+                  {r.time && <span className="muted small">⏱{formatMinutes(r.time)}</span>}
                 </div>
               </div>
             </a>
+            <PlanAddButton r={r} version={version} />
           </li>
         ))}
       </ul>
       {shown.length === 0 && recipes.length > 0 && <p className="empty muted">見つかりませんでした</p>}
 
+      <PlanBar />
       {canEdit && (
-      <div className="fab-row">
+      <div className={`fab-row ${plan.items.length ? 'above-plan' : ''}`}>
         <button className="fab secondary" onClick={() => go('import')}>
           貼り付けて追加
         </button>

@@ -10,6 +10,8 @@ import { HistoryScreen } from './screens/History.tsx';
 import { CookMode } from './screens/CookMode.tsx';
 import { ImportScreen } from './screens/Import.tsx';
 import { Settings } from './screens/Settings.tsx';
+import { PlanScreen } from './screens/Plan.tsx';
+import { usePlanState } from './lib/plan.ts';
 
 const byTitle = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title, 'ja');
 
@@ -20,6 +22,7 @@ export function App() {
   const [toastMsg, setToastMsg] = useState('');
   const timer = useRef<number>(0);
   const route = useRoute();
+  const [plan, setPlan] = usePlanState();
 
   const reload = useCallback(async () => {
     try {
@@ -47,8 +50,8 @@ export function App() {
   }, []);
 
   const ctx = useMemo<AppCtx | null>(
-    () => (recipes ? { recipes, canEdit, reload, replace, setCanEdit, toast } : null),
-    [recipes, canEdit, reload, replace, toast],
+    () => (recipes ? { recipes, canEdit, reload, replace, setCanEdit, toast, plan, setPlan } : null),
+    [recipes, canEdit, reload, replace, toast, plan, setPlan],
   );
 
   if (error) return <div className="center">読み込めませんでした。電波の良いところで開き直してください。<br />{error}</div>;
@@ -63,6 +66,7 @@ export function App() {
   else if (a === 'new') screen = <RecipeEditor />;
   else if (a === 'import') screen = <ImportScreen />;
   else if (a === 'settings') screen = <Settings />;
+  else if (a === 'plan') screen = <PlanScreen />;
   else screen = <RecipeList />;
 
   return (

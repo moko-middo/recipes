@@ -131,8 +131,9 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
         target = easy;
       }
       current = null;
+      // 「## 材料（2人分）」から人数を読む（「## 栄養（1人分）」は人数ではない）
       const sv = h.match(/[（(]([^）)]*人分[^）)]*)[）)]/);
-      if (sv && !servings) servings = sv[1].trim();
+      if (sv && !servings && /^材料/.test(h)) servings = sv[1].trim();
       if (/^材料/.test(h)) {
         mode = 'ingredients';
       } else if (/^栄養/.test(h)) {
