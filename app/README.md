@@ -1,0 +1,55 @@
+# レシピアプリ
+
+## できること（第1段階）
+
+- 一覧・検索（料理名・食材。「人参」で「にんじん」も見つかる）・分類と冷凍OKで絞り込み
+- レシピの詳細表示、写真の追加（一覧の写真も選べる）
+- その場で編集。前の分量は「変更の履歴」に残り、変更メモも付けられる。前の内容に戻すこともできる
+- 調理モード：大きい文字、画面が消えない、材料のチェック、終わった手順を薄く表示。Androidの「画面をキャスト」でNest Hubに映すと横長の画面に合わせて表示される
+- 貼り付けて追加：Claudeアプリ用の依頼文をコピー → 写真や音声と一緒にClaudeに送る → 返ってきた文章を貼り付けて取り込む
+
+## しくみ
+
+- レシピは**このリポジトリのMarkdownファイルが正本**です（`主菜/` `副菜/冷凍OK/` など）
+- アプリで保存すると、GitHubに「コミット」として保存されます。変更メモがコミットのメッセージになり、「変更の履歴」はそのファイルのコミット履歴です
+- 写真は `写真/` フォルダに保存され、レシピのMarkdownの先頭（`写真:`）に書き込まれます
+- `main` が更新されるたびに、GitHub Actions がスマホ版（GitHub Pages）を作り直します（1〜2分）。自分で保存した内容は、その間もすぐ画面に出ます
+
+## スマホで使えるようにする手順（GitHubだけ・無料）
+
+### 1. GitHub Pages をオンにする
+このリポジトリの「Settings」→「Pages」→「Build and deployment」の Source を **GitHub Actions** にする。
+そのあと「Actions」タブ →「スマホ版を更新」→「Run workflow」を押すと、1〜2分で次のアドレスで開けます：
+**https://moko-middo.github.io/recipes/**
+
+AndroidのChromeで開き、メニューの「ホーム画面に追加」でアプリのように使えます。
+
+### 2. 編集用の鍵を作る（編集・写真の追加をする端末だけ）
+見るだけなら鍵は要りません。
+
+1. https://github.com/settings/personal-access-tokens/new を開く
+2. Token name：`レシピアプリ`、Expiration：長め（切れたら作り直してアプリに登録し直します）
+3. Repository access：**Only select repositories** → `recipes` だけを選ぶ
+4. Permissions →「Repository permissions」→ **Contents** を **Read and write** にする
+5. 「Generate token」→ 表示された `github_pat_…` をコピー
+6. アプリの「設定 → 編集用の鍵」に貼り付けて「登録」
+
+鍵は、このレシピのリポジトリを書き換えることだけができる合言葉です。人に見せないでください。
+スマホをなくしたときは、同じページ（Settings → Developer settings → Personal access tokens）で鍵を削除すれば使えなくなります。
+
+**夫も編集したいとき**：同じ鍵を夫のスマホの設定にも貼り付けます。（夫が自分のGitHubアカウントを持っているなら、リポジトリの Collaborators に追加して、夫自身の鍵を作ってもらう方法もあります）
+
+## 開発
+
+```sh
+cd app
+npm install
+npm run dev      # 開発用サーバー
+npm test         # テスト
+npm run build    # レシピのMarkdownを recipes.json にまとめてビルド
+```
+
+## メールアドレスについて
+
+アプリからの保存は、GitHubの匿名アドレス（`…@users.noreply.github.com`）で記録されます。
+パソコンからコミットするときは、GitHubの Settings → Emails の「Block command line pushes that expose my email」をオンにしておくと、本当のアドレスが記録されたコミットはpushできなくなります。
