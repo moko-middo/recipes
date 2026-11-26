@@ -36,6 +36,8 @@ export interface ProperVersion {
   sections: StepSection[];
   /** 所要時間（分） */
   time: number | null;
+  /** そのうち手を動かす時間（分） */
+  handsOn: number | null;
 }
 
 /** レシピの中身（履歴に残す部分）。材料と手順は「手抜き版」 */
@@ -61,6 +63,8 @@ export interface RecipeContent {
   nutritionStale: boolean;
   /** 手抜き版の所要時間（分） */
   time: number | null;
+  /** 手抜き版で手を動かす時間（分） */
+  handsOn: number | null;
   /** ちゃんと版（無ければ null） */
   proper: ProperVersion | null;
 }
@@ -97,11 +101,13 @@ export function contentOf(r: RecipeContent): RecipeContent {
     nutritionNote: r.nutritionNote,
     nutritionStale: r.nutritionStale,
     time: r.time,
+    handsOn: r.handsOn,
     proper: r.proper
       ? {
           ingredients: r.proper.ingredients.map((i) => ({ ...i })),
           sections: r.proper.sections.map((x) => ({ title: x.title, steps: [...x.steps] })),
           time: r.proper.time,
+          handsOn: r.proper.handsOn,
         }
       : null,
   };
@@ -132,4 +138,13 @@ export function formatMinutes(n: number): string {
   const h = Math.floor(n / 60);
   const m = n % 60;
   return m ? `${h}時間${m}分` : `${h}時間`;
+}
+
+/** 全体と手間の差がこれ以下なら「手間」は出さない（ずっと手を動かしている） */
+export const HANDS_ON_MIN_GAP = 5;
+
+/** 「手間 5分」を出すときだけ手間の分数を返す */
+export function visibleHandsOn(time: number | null, handsOn: number | null): number | null {
+  if (!time || !handsOn) return null;
+  return time - handsOn > HANDS_ON_MIN_GAP ? handsOn : null;
 }

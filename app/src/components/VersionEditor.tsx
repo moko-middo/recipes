@@ -1,22 +1,28 @@
-import type { Ingredient, StepSection } from '../lib/types.ts';
+import { HANDS_ON_MIN_GAP, type Ingredient, type StepSection } from '../lib/types.ts';
 
 /** 編集中の版。手順はテキストエリアで「1行1手順」で編集する */
 export interface EditVersion {
   ingredients: Ingredient[];
   sections: { title: string; text: string }[];
   time: string;
+  handsOn: string;
 }
 
-export function toEditVersion(ingredients: Ingredient[], sections: StepSection[], time: number | null): EditVersion {
+export function toEditVersion(ingredients: Ingredient[], sections: StepSection[], time: number | null, handsOn: number | null): EditVersion {
   return {
     ingredients: ingredients.length ? ingredients.map((i) => ({ ...i })) : [{ group: '', name: '', amount: '' }],
     sections: sections.length ? sections.map((s) => ({ title: s.title, text: s.steps.join('\n') })) : [{ title: '', text: '' }],
     time: time ? String(time) : '',
+    handsOn: handsOn ? String(handsOn) : '',
   };
 }
 
-export function fromEditVersion(v: EditVersion): { ingredients: Ingredient[]; sections: StepSection[]; time: number | null } {
-  const t = parseInt(v.time.normalize('NFKC'), 10);
+const minutes = (s: string) => {
+  const n = parseInt(s.normalize('NFKC'), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+export function fromEditVersion(v: EditVersion): { ingredients: Ingredient[]; sections: StepSection[]; time: number | null; handsOn: number | null } {
   return {
     ingredients: v.ingredients
       .map((i) => ({ group: i.group.trim().replace(/^[（(]|[）)]$/g, ''), name: i.name.trim(), amount: i.amount.trim() }))
@@ -30,7 +36,8 @@ export function fromEditVersion(v: EditVersion): { ingredients: Ingredient[]; se
           .filter(Boolean),
       }))
       .filter((s) => s.steps.length || s.title),
-    time: Number.isFinite(t) && t > 0 ? t : null,
+    time: minutes(v.time),
+    handsOn: minutes(v.handsOn),
   };
 }
 
@@ -50,13 +57,23 @@ export function VersionEditor({ value, onChange }: { value: EditVersion; onChang
 
   return (
     <>
-      <label className="field time-field">
-        <span>所要時間</span>
-        <div className="with-unit">
-          <input type="number" inputMode="numeric" min={1} value={value.time} onChange={(e) => onChange({ ...value, time: e.target.value })} placeholder="例：30" />
-          <span>分</span>
-        </div>
-      </label>
+      <div className="time-row">
+        <label className="field">
+          <span>所要時間（全体）</span>
+          <div className="with-unit">
+            <input type="number" inputMode="numeric" min={1} value={value.time} onChange={(e) => onChange({ ...value, time: e.target.value })} placeholder="例：60" />
+            <span>分</span>
+          </div>
+        </label>
+        <label className="field">
+          <span>うち手を動かす時間</span>
+          <div className="with-unit">
+            <input type="number" inputMode="numeric" min={1} value={value.handsOn} onChange={(e) => onChange({ ...value, handsOn: e.target.value })} placeholder="例：5" />
+            <span>分</span>
+          </div>
+        </label>
+      </div>
+      <p className="muted small">漬け込みなど置いておくだけの時間は入れません。全体との差が{HANDS_ON_MIN_GAP}分以内なら「手間」は表示されません。</p>
 
       <h2>材料</h2>
       <p className="muted small">まとまり欄に A や B、「たれ」などを入れると (A) のようにまとめて表示されます。</p>

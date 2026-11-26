@@ -38,11 +38,13 @@ export function diffContent(a: RecipeContent, b: RecipeContent): Change[] {
   }
   const t = (v: number | null | undefined) => (v ? formatMinutes(v) : '（なし）');
   if (a.time !== b.time) out.push({ label: '時間（手抜き版）', before: t(a.time), after: t(b.time) });
+  if (a.handsOn !== b.handsOn) out.push({ label: '手間（手抜き版）', before: t(a.handsOn), after: t(b.handsOn) });
   diffVersion(out, '', a.ingredients, b.ingredients, a.sections, b.sections);
   if (!a.proper && b.proper) out.push({ label: 'ちゃんと版', before: '（なし）', after: '追加' });
   else if (a.proper && !b.proper) out.push({ label: 'ちゃんと版', before: 'あり', after: '（削除）' });
   else if (a.proper && b.proper) {
     if (a.proper.time !== b.proper.time) out.push({ label: '時間（ちゃんと版）', before: t(a.proper.time), after: t(b.proper.time) });
+    if (a.proper.handsOn !== b.proper.handsOn) out.push({ label: '手間（ちゃんと版）', before: t(a.proper.handsOn), after: t(b.proper.handsOn) });
     diffVersion(out, 'ちゃんと版：', a.proper.ingredients, b.proper.ingredients, a.proper.sections, b.proper.sections);
   }
   return out;

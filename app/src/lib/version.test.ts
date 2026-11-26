@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { parseRecipeMarkdown, toMarkdown } from './markdown.ts';
 import { diffContent } from './diff.ts';
-import { formatMinutes, parseMinutes } from './types.ts';
+import { formatMinutes, parseMinutes, visibleHandsOn } from './types.ts';
 
 const md = `---
 分類: 副菜
 何人分: 4人分
-時間: 10分
+時間: 60分
+手間: 5分
 ちゃんと版の時間: 30分
+ちゃんと版の手間: 28分
 ---
 
 # きんぴらごぼう
@@ -48,7 +50,9 @@ const md = `---
 describe('手抜き版とちゃんと版', () => {
   it('両方の材料・手順・時間を読める', () => {
     const r = parseRecipeMarkdown(md);
-    expect(r.time).toBe(10);
+    expect(r.time).toBe(60);
+    expect(r.handsOn).toBe(5);
+    expect(r.proper!.handsOn).toBe(28);
     expect(r.ingredients.map((i) => i.name)).toEqual(['きんぴら用カット野菜', 'しょうゆ']);
     expect(r.sections).toEqual([{ title: '', steps: ['内鍋に全部入れる', '炒める5分'] }]);
     expect(r.proper!.time).toBe(30);
@@ -78,6 +82,13 @@ describe('手抜き版とちゃんと版', () => {
       { label: '時間（ちゃんと版）', before: '30分', after: '40分' },
       { label: 'ちゃんと版：ごぼう', before: '100g', after: '120g' },
     ]);
+  });
+
+  it('全体と手間の差が5分以内なら手間は出さない', () => {
+    expect(visibleHandsOn(60, 5)).toBe(5);
+    expect(visibleHandsOn(30, 25)).toBeNull();
+    expect(visibleHandsOn(30, 24)).toBe(24);
+    expect(visibleHandsOn(null, 5)).toBeNull();
   });
 
   it('時間の読み書き', () => {

@@ -257,11 +257,13 @@ export function parseRecipeMarkdown(md: string, opts: ParseOptions = {}): Recipe
     nutritionNote: nutritionNotes.join('\n'),
     nutritionStale: nutrition ? nutritionStale : false,
     time: parseMinutes(front['時間']),
+    handsOn: parseMinutes(front['手間']),
     proper: hasProper
       ? {
           ingredients: proper.ingredients,
           sections: proper.sections.filter((s) => s.steps.length > 0 || s.title),
           time: parseMinutes(front['ちゃんと版の時間']),
+          handsOn: parseMinutes(front['ちゃんと版の手間']),
         }
       : null,
   };
@@ -295,7 +297,9 @@ export function toMarkdown(r: RecipeContent): string {
   if (r.freezable !== null) out.push(`冷凍: ${r.freezable ? 'OK' : 'NG'}`);
   if (r.photos.length) out.push(`写真: ${r.photos.join(', ')}`);
   if (r.time) out.push(`時間: ${formatMinutes(r.time)}`);
+  if (r.handsOn) out.push(`手間: ${formatMinutes(r.handsOn)}`);
   if (r.proper?.time) out.push(`ちゃんと版の時間: ${formatMinutes(r.proper.time)}`);
+  if (r.proper?.handsOn) out.push(`ちゃんと版の手間: ${formatMinutes(r.proper.handsOn)}`);
   out.push('---', '', `# ${r.title}`, '');
   if (r.servings) out.push(`**${r.servings}**`, '');
   writeVersion(out, '', r.ingredients, r.sections);

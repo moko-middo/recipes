@@ -28,6 +28,9 @@ describe('栄養', () => {
       expect(r.time, r.title).toBeGreaterThan(0);
       expect(r.proper, r.title).not.toBeNull();
       expect(r.proper!.time, r.title).toBeGreaterThan(0);
+      expect(r.handsOn, r.title).toBeGreaterThan(0);
+      expect(r.handsOn!, r.title).toBeLessThanOrEqual(r.time!);
+      expect(r.proper!.handsOn!, r.title).toBeLessThanOrEqual(r.proper!.time!);
       expect(r.proper!.ingredients.length, r.title).toBeGreaterThan(0);
       expect(r.proper!.sections.flatMap((s) => s.steps).length, r.title).toBeGreaterThan(0);
       // ちゃんと版の材料が手抜き版の材料に紛れ込んでいない

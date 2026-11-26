@@ -28,6 +28,7 @@ export function blankRecipe(): RecipeContent {
     nutritionNote: '',
     nutritionStale: false,
     time: null,
+    handsOn: null,
     proper: null,
   };
 }
@@ -68,9 +69,9 @@ export function RecipeEditor({ id }: { id?: string }) {
   const [draft, setDraft] = useState<RecipeContent>(() =>
     existing ? contentOf(existing) : (fromImport && takeImportDraft()) || blankRecipe(),
   );
-  const [easy, setEasy] = useState<EditVersion>(() => toEditVersion(draft.ingredients, draft.sections, draft.time));
+  const [easy, setEasy] = useState<EditVersion>(() => toEditVersion(draft.ingredients, draft.sections, draft.time, draft.handsOn));
   const [proper, setProper] = useState<EditVersion | null>(() =>
-    draft.proper ? toEditVersion(draft.proper.ingredients, draft.proper.sections, draft.proper.time) : null,
+    draft.proper ? toEditVersion(draft.proper.ingredients, draft.proper.sections, draft.proper.time, draft.proper.handsOn) : null,
   );
   const [tab, setTab] = useState<'easy' | 'proper'>('easy');
   const [note, setNote] = useState('');
@@ -85,6 +86,7 @@ export function RecipeEditor({ id }: { id?: string }) {
       ingredients: e.ingredients,
       sections: e.sections,
       time: e.time,
+      handsOn: e.handsOn,
       proper: proper ? fromEditVersion(proper) : null,
       memo: draft.memo.trim(),
       nutrition: parseNutrition(nutText),
@@ -199,7 +201,7 @@ export function RecipeEditor({ id }: { id?: string }) {
         ) : (
           <div className="empty">
             <p className="muted">ちゃんと版はまだありません。</p>
-            <button className="btn primary" onClick={() => setProper({ ...structuredClone(easy), time: '' })}>
+            <button className="btn primary" onClick={() => setProper({ ...structuredClone(easy), time: '', handsOn: '' })}>
               手抜き版をコピーして作る
             </button>
           </div>
