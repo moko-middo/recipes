@@ -3,7 +3,7 @@ import { useApp } from '../context.tsx';
 import { buildShopping, SECTIONS, suggestFor, type PlanItem, type ShoppingRow } from '../lib/shopping.ts';
 import { formatMinutes, type Recipe } from '../lib/types.ts';
 import { CategoryBadge, TopBar } from '../components/ui.tsx';
-import { ago, displayName, type SharedItem } from '../lib/sharedPlan.ts';
+import { ago, type SharedItem } from '../lib/sharedPlan.ts';
 
 /** 作る予定：選んだ料理、余りそうな食材と使い切りの提案、買い物リスト */
 export function PlanScreen() {
@@ -27,7 +27,8 @@ export function PlanScreen() {
   };
   const checkOf = (name: string) => plan.checked.find((c) => c.name === name);
   const toggleCheck = (name: string) => planOp({ type: 'check', name, on: !checkOf(name) });
-  const who = (l: string) => (l === login ? 'わたし' : displayName(plan, l));
+  // 相手はGitHubのユーザー名で出す
+  const who = (l: string) => (l === login ? 'わたし' : l);
 
   if (!canEdit) {
     return (

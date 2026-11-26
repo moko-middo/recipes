@@ -14,7 +14,7 @@ function readCache(): SharedPlan {
   try {
     return parsePlan(localStorage.getItem(CACHE_KEY));
   } catch {
-    return { ...EMPTY_PLAN, names: {} };
+    return { ...EMPTY_PLAN };
   }
 }
 

@@ -6,8 +6,7 @@ import { REPO } from '../repoConfig.ts';
 import { TopBar } from '../components/ui.tsx';
 
 export function Settings() {
-  const { canEdit, setCanEdit, reload, toast, plan, planOp, login: planLogin } = useApp();
-  const [nick, setNick] = useState<string | null>(null);
+  const { canEdit, setCanEdit, reload, toast } = useApp();
   const [input, setInput] = useState('');
   const [login, setLogin] = useState('');
   const [checking, setChecking] = useState(false);
@@ -71,27 +70,6 @@ export function Settings() {
           </>
         )}
       </section>
-
-      {canEdit && planLogin && (
-        <section>
-          <h2>相手のスマホに出るあなたの名前</h2>
-          <p className="muted small">作る予定で「〇〇が追加」「〇〇が買った」と相手に見える名前です（例：ママ、夫、名前など）。自分のスマホでは「わたし」と出ます。</p>
-          <div className="inline-form">
-            <input value={nick ?? plan.names[planLogin] ?? ''} placeholder={planLogin} onChange={(e) => setNick(e.target.value)} />
-            <button
-              className="btn primary"
-              onClick={() => {
-                planOp({ type: 'name', name: (nick ?? '').trim() });
-                setNick(null);
-                toast('呼び名を保存しました');
-              }}
-              disabled={nick === null}
-            >
-              保存
-            </button>
-          </div>
-        </section>
-      )}
 
       <section>
         <h2>最新の内容を読み込む</h2>

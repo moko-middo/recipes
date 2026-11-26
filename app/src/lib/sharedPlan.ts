@@ -21,8 +21,6 @@ export interface SharedCheck {
 export interface SharedPlan {
   items: SharedItem[];
   checked: SharedCheck[];
-  /** GitHubのユーザー名 → 呼び名（「わたし」「夫」など） */
-  names: Record<string, string>;
   updatedBy: string;
   updatedAt: number;
 }
@@ -33,24 +31,22 @@ export type PlanOp =
   | { type: 'version'; id: string; version: PlanItem['version'] }
   | { type: 'check'; name: string; on: boolean }
   | { type: 'clearChecks' }
-  | { type: 'clearAll' }
-  | { type: 'name'; name: string };
+  | { type: 'clearAll' };
 
-export const EMPTY_PLAN: SharedPlan = { items: [], checked: [], names: {}, updatedBy: '', updatedAt: 0 };
+export const EMPTY_PLAN: SharedPlan = { items: [], checked: [], updatedBy: '', updatedAt: 0 };
 
 export function parsePlan(text: string | null | undefined): SharedPlan {
-  if (!text) return { ...EMPTY_PLAN, names: {} };
+  if (!text) return { ...EMPTY_PLAN };
   try {
     const p = JSON.parse(text);
     return {
       items: Array.isArray(p.items) ? p.items.filter((i: SharedItem) => i && typeof i.id === 'string') : [],
       checked: Array.isArray(p.checked) ? p.checked.filter((c: SharedCheck) => c && typeof c.name === 'string') : [],
-      names: p.names && typeof p.names === 'object' ? p.names : {},
       updatedBy: typeof p.updatedBy === 'string' ? p.updatedBy : '',
       updatedAt: typeof p.updatedAt === 'number' ? p.updatedAt : 0,
     };
   } catch {
-    return { ...EMPTY_PLAN, names: {} };
+    return { ...EMPTY_PLAN };
   }
 }
 
@@ -60,7 +56,7 @@ export function serializePlan(p: SharedPlan): string {
 
 /** 操作を1つ重ねる。同じ操作を2回重ねても結果が変わらないようにしてある */
 export function applyOp(p: SharedPlan, op: PlanOp, by: string, at: number): SharedPlan {
-  const next: SharedPlan = { ...p, items: [...p.items], checked: [...p.checked], names: { ...p.names }, updatedBy: by, updatedAt: at };
+  const next: SharedPlan = { ...p, items: [...p.items], checked: [...p.checked], updatedBy: by, updatedAt: at };
   switch (op.type) {
     case 'add':
       if (!next.items.some((i) => i.id === op.id)) next.items.push({ id: op.id, version: op.version, by, at });
@@ -82,10 +78,6 @@ export function applyOp(p: SharedPlan, op: PlanOp, by: string, at: number): Shar
       next.items = [];
       next.checked = [];
       break;
-    case 'name':
-      if (op.name.trim()) next.names[by] = op.name.trim();
-      else delete next.names[by];
-      break;
   }
   return next;
 }
@@ -105,14 +97,7 @@ export function describeOp(op: PlanOp, title: (id: string) => string): string {
       return '買い物リストのチェックを外す';
     case 'clearAll':
       return '作る予定を全部消す';
-    case 'name':
-      return `呼び名を「${op.name}」にする`;
   }
-}
-
-/** 呼び名（無ければGitHubのユーザー名） */
-export function displayName(p: SharedPlan, login: string): string {
-  return p.names[login] || login;
 }
 
 /** 「3分前」「きのう」など */

@@ -53,7 +53,8 @@ AndroidのChromeで開き、メニューの「ホーム画面に追加」でア�
 3. 鍵を作る：https://github.com/settings/tokens/new （classic token）を開き、Note に `レシピアプリ`、Expiration は長め、**`public_repo` だけにチェック**して「Generate token」
    - 招待された人は、自分が持ち主ではないリポジトリなので「fine-grained token」では絞り込めません。そのため classic token の `public_repo`（公開リポジトリへの書き込み）を使います
 4. スマホで https://moko-middo.github.io/recipes/ を開き、「設定 → 編集用の鍵」に貼り付けて登録
-5. 「設定 → 相手のスマホに出るあなたの名前」に「夫」などと入れる
+
+作る予定では、相手の操作はGitHubのユーザー名で「〇〇が追加」「〇〇が買った」と出ます（自分の操作は「わたし」）。
 
 **安全について**：書き換えられるのは、持ち主（あなた）と招待した人（夫）だけです。知らない人が自分の鍵を登録しても、アプリは断り、GitHubも書き込みを拒否します。
 

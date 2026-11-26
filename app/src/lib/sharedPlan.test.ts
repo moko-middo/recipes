@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ago, applyOp, displayName, EMPTY_PLAN, parsePlan, serializePlan, type PlanOp, type SharedPlan } from './sharedPlan.ts';
+import { ago, applyOp, EMPTY_PLAN, parsePlan, serializePlan, type PlanOp, type SharedPlan } from './sharedPlan.ts';
 
 const run = (p: SharedPlan, ops: PlanOp[], by: string) => ops.reduce((acc, op, n) => applyOp(acc, op, by, 1000 + n), p);
 
@@ -26,11 +26,9 @@ describe('共有の作る予定', () => {
     expect(afterWife.items.map((i) => `${i.id}:${i.version}`)).toEqual(['a:proper', 'b:easy']);
   });
 
-  it('呼び名', () => {
-    const p = applyOp(EMPTY_PLAN, { type: 'name', name: '夫' }, 'otto', 1);
-    expect(displayName(p, 'otto')).toBe('夫');
-    expect(displayName(p, 'someone')).toBe('someone');
-    expect(applyOp(p, { type: 'name', name: '' }, 'otto', 2).names).toEqual({});
+  it('前の形式（呼び名つき）も読める', () => {
+    const p = parsePlan('{"items":[],"checked":[],"names":{"otto":"夫"},"updatedBy":"otto","updatedAt":1}');
+    expect(p).toEqual({ items: [], checked: [], updatedBy: 'otto', updatedAt: 1 });
   });
 
   it('保存形式の読み書き。壊れていても空として扱う', () => {
