@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { Recipe } from './lib/types.ts';
-import type { PlanState } from './lib/plan.ts';
+import type { PlanOp, SharedPlan } from './lib/sharedPlan.ts';
+import type { PlanStatus } from './lib/plan.ts';
 
 export interface AppCtx {
   recipes: Recipe[];
@@ -11,9 +12,13 @@ export interface AppCtx {
   replace: (oldId: string | null, r: Recipe | null) => void;
   setCanEdit: (v: boolean) => void;
   toast: (msg: string) => void;
-  /** 作る予定 */
-  plan: PlanState;
-  setPlan: (update: (p: PlanState) => PlanState) => void;
+  /** 2人で共有する作る予定 */
+  plan: SharedPlan;
+  planOp: (op: PlanOp) => void;
+  planStatus: PlanStatus;
+  refreshPlan: () => Promise<void>;
+  /** 鍵の持ち主（GitHubのユーザー名） */
+  login: string;
 }
 
 export const Ctx = createContext<AppCtx | null>(null);

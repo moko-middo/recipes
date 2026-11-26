@@ -95,7 +95,7 @@ export function RecipeList() {
                 </div>
               </div>
             </a>
-            <PlanAddButton r={r} version={version} />
+            {canEdit && <PlanAddButton r={r} version={version} />}
           </li>
         ))}
       </ul>

@@ -1442,3 +1442,27 @@ pre {
   font-size: 12px;
   color: #9a5b00;
 }
+
+.sync-line {
+  font-size: 12px;
+  color: var(--muted);
+  margin: -4px 2px 8px;
+  min-height: 1em;
+}
+
+.sync-line.error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.added-by {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.shop-by {
+  display: block;
+  margin-left: 32px;
+  font-size: 12px;
+  color: var(--freeze);
+}

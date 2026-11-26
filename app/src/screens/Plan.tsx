@@ -3,14 +3,15 @@ import { useApp } from '../context.tsx';
 import { buildShopping, SECTIONS, suggestFor, type PlanItem, type ShoppingRow } from '../lib/shopping.ts';
 import { formatMinutes, type Recipe } from '../lib/types.ts';
 import { CategoryBadge, TopBar } from '../components/ui.tsx';
+import { ago, displayName, type SharedItem } from '../lib/sharedPlan.ts';
 
 /** 作る予定：選んだ料理、余りそうな食材と使い切りの提案、買い物リスト */
 export function PlanScreen() {
-  const { recipes, plan, setPlan, toast } = useApp();
+  const { recipes, plan, planOp, planStatus, login, canEdit, toast } = useApp();
 
   // 消えたレシピ（名前を変えた・削除した）は外して扱う
   const items = useMemo(
-    () => plan.items.map((i) => ({ item: i, recipe: recipes.find((r) => r.id === i.id) })).filter((x): x is { item: PlanItem; recipe: Recipe } => !!x.recipe),
+    () => plan.items.map((i) => ({ item: i, recipe: recipes.find((r) => r.id === i.id) })).filter((x): x is { item: SharedItem; recipe: Recipe } => !!x.recipe),
     [plan.items, recipes],
   );
   const live = items.map((x) => x.item);
@@ -18,15 +19,37 @@ export function PlanScreen() {
   const leftovers = rows.filter((r) => r.leftover);
   const pantry = rows.filter((r) => r.section === '家にあるか確認');
 
-  const setVersion = (id: string, version: PlanItem['version']) =>
-    setPlan((p) => ({ ...p, items: p.items.map((i) => (i.id === id ? { ...i, version } : i)) }));
-  const remove = (id: string) => setPlan((p) => ({ ...p, items: p.items.filter((i) => i.id !== id) }));
+  const setVersion = (id: string, version: PlanItem['version']) => planOp({ type: 'version', id, version });
+  const remove = (id: string) => planOp({ type: 'remove', id });
   const add = (r: Recipe, version: PlanItem['version']) => {
-    setPlan((p) => ({ ...p, items: [...p.items, { id: r.id, version }] }));
+    planOp({ type: 'add', id: r.id, version });
     toast(`「${r.title}」を足しました`);
   };
-  const toggleCheck = (name: string) =>
-    setPlan((p) => ({ ...p, checked: p.checked.includes(name) ? p.checked.filter((n) => n !== name) : [...p.checked, name] }));
+  const checkOf = (name: string) => plan.checked.find((c) => c.name === name);
+  const toggleCheck = (name: string) => planOp({ type: 'check', name, on: !checkOf(name) });
+  const who = (l: string) => (l === login ? 'わたし' : displayName(plan, l));
+
+  if (!canEdit) {
+    return (
+      <div className="page plan">
+        <TopBar title="作る予定" backTo="" />
+        <div className="empty">
+          <p>作る予定は、編集用の鍵を登録した端末で使えます。</p>
+          <a className="btn primary" href="#/settings">
+            設定へ
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const syncLine = (
+    <p className={`sync-line ${planStatus}`}>
+      {planStatus === 'saving' && '保存中…'}
+      {planStatus === 'error' && '保存できていません（電波を確認してください）'}
+      {(planStatus === 'ok' || planStatus === 'loading') && plan.updatedAt > 0 && `最終更新：${who(plan.updatedBy)}・${ago(plan.updatedAt)}`}
+    </p>
+  );
 
   const totalTime = items.reduce((s, { item, recipe }) => s + ((item.version === 'proper' && recipe.proper ? recipe.proper.handsOn : recipe.handsOn) ?? 0), 0);
 
@@ -34,6 +57,7 @@ export function PlanScreen() {
     return (
       <div className="page plan">
         <TopBar title="作る予定" backTo="" />
+        {syncLine}
         <div className="empty">
           <p>まだ何も選んでいません。</p>
           <p className="muted small">一覧の「＋」で、作りたい料理を選んでください。</p>
@@ -48,6 +72,7 @@ export function PlanScreen() {
   return (
     <div className="page plan">
       <TopBar title="作る予定" backTo="" />
+      {syncLine}
 
       <section>
         <h2>作るもの（{items.length}品）</h2>
@@ -64,6 +89,7 @@ export function PlanScreen() {
                   </a>
                   <div className="plan-item-meta">
                     <CategoryBadge r={r} />
+                    {item.by && <span className="added-by">{who(item.by)}が追加</span>}
                     {t && (
                       <span className="muted small">
                         {formatMinutes(t)}
@@ -115,7 +141,8 @@ export function PlanScreen() {
               <h3>{section}</h3>
               <ul>
                 {list.map((row) => {
-                  const done = plan.checked.includes(row.name);
+                  const check = checkOf(row.name);
+                  const done = !!check;
                   return (
                     <li key={row.name} className={done ? 'done' : ''}>
                       <label>
@@ -124,6 +151,7 @@ export function PlanScreen() {
                         <span className="shop-buy">{row.buy}</span>
                       </label>
                       {row.leftover ? <span className="shop-note">使うのは{row.use}・{row.leftoverText}余る</span> : null}
+                      {check && check.by !== login && <span className="shop-by">{who(check.by)}が買った</span>}
                     </li>
                   );
                 })}
@@ -141,14 +169,14 @@ export function PlanScreen() {
 
       <div className="plan-foot">
         {plan.checked.length > 0 && (
-          <button className="btn small" onClick={() => setPlan((p) => ({ ...p, checked: [] }))}>
+          <button className="btn small" onClick={() => planOp({ type: 'clearChecks' })}>
             チェックを外す
           </button>
         )}
         <button
           className="btn small danger"
           onClick={() => {
-            if (confirm('作る予定を全部消しますか？')) setPlan(() => ({ items: [], checked: [] }));
+            if (confirm('作る予定を全部消しますか？（相手のスマホからも消えます）')) planOp({ type: 'clearAll' });
           }}
         >
           作る予定を全部消す

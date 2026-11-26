@@ -94,7 +94,7 @@ export function RecipeDetail({ id }: { id: string }) {
         <button className="btn primary big" onClick={() => go(`r/${r.id}/cook`)}>
           🍳 作る（調理モード）
         </button>
-        <PlanToggleButton r={r} version={version} />
+        {canEdit && <PlanToggleButton r={r} version={version} />}
       </div>
 
       <section>

@@ -4,14 +4,10 @@ import type { VersionKind } from './VersionToggle.tsx';
 
 /** 作る予定に入っているか、出し入れする関数 */
 export function usePlanToggle(r: Recipe) {
-  const { plan, setPlan, toast } = useApp();
+  const { plan, planOp, toast } = useApp();
   const inPlan = plan.items.some((i) => i.id === r.id);
   const toggle = (version: VersionKind = 'easy') => {
-    setPlan((p) =>
-      inPlan
-        ? { ...p, items: p.items.filter((i) => i.id !== r.id) }
-        : { ...p, items: [...p.items, { id: r.id, version: version === 'proper' && r.proper ? 'proper' : 'easy' }] },
-    );
+    planOp(inPlan ? { type: 'remove', id: r.id } : { type: 'add', id: r.id, version: version === 'proper' && r.proper ? 'proper' : 'easy' });
     toast(inPlan ? `「${r.title}」を作る予定から外しました` : `「${r.title}」を作る予定に入れました`);
   };
   return { inPlan, toggle };
@@ -34,8 +30,8 @@ export function PlanAddButton({ r, version }: { r: Recipe; version: VersionKind 
 
 /** 画面の下に出す「作る予定」への入口 */
 export function PlanBar() {
-  const { plan } = useApp();
-  if (plan.items.length === 0) return null;
+  const { plan, canEdit } = useApp();
+  if (!canEdit || plan.items.length === 0) return null;
   return (
     <a className="plan-bar" href="#/plan">
       <span>🛒 作る予定</span>

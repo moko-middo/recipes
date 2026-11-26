@@ -6,7 +6,8 @@ import { REPO } from '../repoConfig.ts';
 import { TopBar } from '../components/ui.tsx';
 
 export function Settings() {
-  const { canEdit, setCanEdit, reload, toast } = useApp();
+  const { canEdit, setCanEdit, reload, toast, plan, planOp, login: planLogin } = useApp();
+  const [nick, setNick] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [login, setLogin] = useState('');
   const [checking, setChecking] = useState(false);
@@ -59,7 +60,7 @@ export function Settings() {
         ) : (
           <>
             <p className="muted small">
-              見るだけなら鍵は不要です。編集・写真の追加をするには、GitHubで作った鍵（fine-grained personal access token）を貼り付けます。作り方は app/README.md にあります。
+              見るだけなら鍵は不要です。編集・写真の追加・作る予定を使うには、GitHubで作った鍵を貼り付けます。作り方は app/README.md にあります（招待された人は作り方が少し違います）。
             </p>
             <div className="inline-form">
               <input type="password" placeholder="github_pat_…" value={input} onChange={(e) => setInput(e.target.value)} autoComplete="off" />
@@ -70,6 +71,27 @@ export function Settings() {
           </>
         )}
       </section>
+
+      {canEdit && planLogin && (
+        <section>
+          <h2>相手のスマホに出るあなたの名前</h2>
+          <p className="muted small">作る予定で「〇〇が追加」「〇〇が買った」と相手に見える名前です（例：ママ、夫、名前など）。自分のスマホでは「わたし」と出ます。</p>
+          <div className="inline-form">
+            <input value={nick ?? plan.names[planLogin] ?? ''} placeholder={planLogin} onChange={(e) => setNick(e.target.value)} />
+            <button
+              className="btn primary"
+              onClick={() => {
+                planOp({ type: 'name', name: (nick ?? '').trim() });
+                setNick(null);
+                toast('呼び名を保存しました');
+              }}
+              disabled={nick === null}
+            >
+              保存
+            </button>
+          </div>
+        </section>
+      )}
 
       <section>
         <h2>最新の内容を読み込む</h2>
